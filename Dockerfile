@@ -6,7 +6,8 @@ RUN pip install --no-cache-dir --only-binary=:all: \
     scanpy==1.10.2 \
     pandas==2.2.3 \
     celltypist==1.6.3 \
-    harmonypy==0.1.0
+    harmonypy==0.1.0 \
+    scikit-image==0.22.0
 
 FROM python:3.12-slim
 RUN apt-get update && apt-get install -y --no-install-recommends \
