@@ -7,9 +7,7 @@ params.max_mt          = 15.0
 params.container_image = null
 
 // Catch missing containers before launching jobs
-if (!params.container_image) {
-    error "--container_image is not defined. You must provide a valid Docker/ECR URI."
-}
+
 
 process SCANPY_ANALYSIS {
     
@@ -41,7 +39,10 @@ process SCANPY_ANALYSIS {
 
 workflow {
     
-    
+    if (!params.container_image) {
+        error "--container_image is not defined. You must provide a valid Docker/ECR URI."
+    }
+
     ch_input    = Channel.fromPath(params.input)
     ch_metadata = Channel.fromPath(params.metadata)
     ch_model    = Channel.fromPath(params.model)
