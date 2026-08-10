@@ -23,7 +23,7 @@ process SCANPY_ANALYSIS {
     
     script:
     """
-    python process_scanpy.py \
+    python ${projectDir}/process_scanpy.py \
         -i ${matrix} \
         -mod ${model} \
         -m ${metadata} \
