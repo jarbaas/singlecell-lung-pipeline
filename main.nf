@@ -1,4 +1,4 @@
-// 1. Parameters & Channels Definition
+// 1. Parameters Definition
 params.input     = null
 params.metadata  = null
 params.model     = null
@@ -8,13 +8,13 @@ params.outdir    = null
 // 2. The Process Block
 process SCANPY_ANALYSIS {
     
-    // Route outputs to S3
     publishDir "${params.outdir}", mode: 'copy'
 
     input: 
     path matrix
     path metadata
     path model
+    path script_file 
     
     output:
     path '*.h5ad'
@@ -23,7 +23,7 @@ process SCANPY_ANALYSIS {
     
     script:
     """
-    python ${projectDir}/process_scanpy.py \
+    python ${script_file} \
         -i ${matrix} \
         -mod ${model} \
         -m ${metadata} \
@@ -35,11 +35,12 @@ process SCANPY_ANALYSIS {
 // 3. The Workflow Orchestration Block
 workflow {
     
-    // Initialize channels from S3 paths
+    // Initialize channels
     ch_input    = Channel.fromPath(params.input)
     ch_metadata = Channel.fromPath(params.metadata)
     ch_model    = Channel.fromPath(params.model)
+    ch_script   = Channel.fromPath("${projectDir}/process_scanpy.py")
 
-    // Execute the process with the staged channels
-    SCANPY_ANALYSIS(ch_input, ch_metadata, ch_model)
+    // Execute the process
+    SCANPY_ANALYSIS(ch_input, ch_metadata, ch_model, ch_script)
 }

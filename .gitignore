@@ -5,6 +5,7 @@ matrix/
 *.csv
 *.gz
 *.h5ad
+*.pkl
 
 # Ignore notebooks
 *.ipynb
