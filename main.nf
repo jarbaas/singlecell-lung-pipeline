@@ -6,7 +6,6 @@ params.outdir          = null
 params.max_mt          = 15.0
 params.container_image = null
 
-// Catch missing containers before launching jobs
 
 
 process SCANPY_ANALYSIS {
