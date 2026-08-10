@@ -18,7 +18,7 @@ process SCANPY_ANALYSIS {
     
     output:
     path '*.h5ad'
-    path '*.png'
+    path 'figures/*.png'
     path 'marker_genes.csv'
     
     script:

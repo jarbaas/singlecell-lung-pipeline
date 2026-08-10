@@ -38,7 +38,7 @@ if input_path.is_file() and input_path.suffix == '.h5ad':
     adata = sc.read_h5ad(input_path)
 elif input_path.is_dir():
     logging.info(f"Reading 10x matrix directory: {input_path}")
-    adata = sc.read_10x_mtx(input_path, var_names='gene_symbols', make_unique=True, cache=True)
+    adata = sc.read_10x_mtx(input_path, var_names='gene_symbols', make_unique=True, cache=False)
 else:
     raise ValueError(f"Invalid input path: {input_path}")
 
