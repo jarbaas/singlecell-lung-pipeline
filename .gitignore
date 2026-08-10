@@ -1,0 +1,15 @@
+# Ignore data, metadata, or compressed files
+matrix/
+*.tsv
+*.mtx
+*.csv
+*.gz
+*.h5ad
+
+# Ignore notebooks
+*.ipynb
+
+# Ignore Nextflow execution files
+.nextflow/
+work/
+*.log
