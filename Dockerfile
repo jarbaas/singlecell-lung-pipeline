@@ -5,7 +5,8 @@ RUN pip install --no-cache-dir --only-binary=:all: \
     anndata==0.10.8 \
     scanpy==1.10.2 \
     pandas==2.2.3 \
-    celltypist==1.6.3
+    celltypist==1.6.3 \
+    harmonypy==0.1.0
 
 FROM python:3.12-slim
 RUN apt-get update && apt-get install -y --no-install-recommends \

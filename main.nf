@@ -1,11 +1,16 @@
-// 1. Parameters Definition
-params.input     = null
-params.metadata  = null
-params.model     = null
-params.batch_key = 'Sample_Name'
-params.outdir    = null
+params.input           = null
+params.metadata        = null
+params.model           = null
+params.batch_key       = 'Sample_Name'
+params.outdir          = null
+params.max_mt          = 15.0
+params.container_image = null
 
-// 2. The Process Block
+// Catch missing containers before launching jobs
+if (!params.container_image) {
+    error "--container_image is not defined. You must provide a valid Docker/ECR URI."
+}
+
 process SCANPY_ANALYSIS {
     
     publishDir "${params.outdir}", mode: 'copy'
@@ -28,19 +33,20 @@ process SCANPY_ANALYSIS {
         -mod ${model} \
         -m ${metadata} \
         -b ${params.batch_key} \
+        --max_mt ${params.max_mt} \
         -t ${task.cpus}
     """
 }
 
-// 3. The Workflow Orchestration Block
+
 workflow {
     
-    // Initialize channels
+    
     ch_input    = Channel.fromPath(params.input)
     ch_metadata = Channel.fromPath(params.metadata)
     ch_model    = Channel.fromPath(params.model)
     ch_script   = Channel.fromPath("${projectDir}/process_scanpy.py")
 
-    // Execute the process
+    
     SCANPY_ANALYSIS(ch_input, ch_metadata, ch_model, ch_script)
 }

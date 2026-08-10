@@ -19,6 +19,7 @@ parser.add_argument("-i", "--input", required=True, help="Path to matrix folder 
 parser.add_argument("-mod", "--model", required=True, help="Path to CellTypist model PKL")
 parser.add_argument("-m", "--metadata", required=False, help="Optional path to metadata CSV")
 parser.add_argument("-b", "--batch-key", default="Sample_Name", help="Metadata column defining the batch")
+parser.add_argument('--max_mt', type=float, default=15.0, help="Maximum allowable mitochondrial percentage, 15.0 by default")
 parser.add_argument("-t", "--threads", type=int, default=1, help="Number of CPU threads")
 parser.add_argument("-s", "--seed", type=int, default=42, help="Random seed for reproducibility")
 args = parser.parse_args()
@@ -45,8 +46,13 @@ else:
 # Metadata Integration
 if args.metadata:
     logging.info(f"Merging external metadata: {args.metadata}")
-    metadata = pd.read_csv(args.metadata, index_col='Unnamed: 0')
+    metadata = pd.read_csv(args.metadata, index_col=0)
     adata.obs = adata.obs.join(metadata)
+    if adata.obs[args.batch_key].isna().all():
+        raise ValueError(
+            f"Metadata merge failed. All values for '{args.batch_key}' are NaN. "
+            "Verify your matrix barcodes and metadata index match exactly."
+        )
 
 # Data Validation
 if adata.n_obs == 0 or adata.n_vars == 0:
@@ -58,11 +64,15 @@ if args.batch_key not in adata.obs.columns:
 logging.info(f"Validation passed. Matrix: {adata.n_obs} cells x {adata.n_vars} genes.")
 
 # Perform QC
-adata.var["mt"] = adata.var_names.str.startswith("MT-")
+adata.var["mt"] = adata.var_names.str.upper().str.startswith("MT-")
 sc.pp.calculate_qc_metrics(adata, qc_vars=["mt"], inplace=True, log1p=True)
 
+# Drop cells missing from metadata file
+adata = adata[adata.obs[args.batch_key].notna()].copy()
+    logging.info(f"Filtered matrix to cells with valid metadata. New shape: {adata.n_obs} cells x {adata.n_vars} genes.")
+
 # Doublet detection
-sc.pp.scrublet(adata, batch_key=args.batch_key)
+sc.pp.scrublet(adata, batch_key=args.batch_key, random_state=args.seed)
 
 # Save QC plots
 sc.pl.violin(adata, ["n_genes_by_counts", "total_counts", "pct_counts_mt"], multi_panel=True, save="_pre_qc.png")
@@ -72,7 +82,7 @@ logging.info("QC completed and plots saved.")
 #Filtering
 sc.pp.filter_cells(adata, min_genes=100)
 sc.pp.filter_genes(adata, min_cells=3)
-adata = adata[adata.obs['pct_counts_mt'] < 15].copy()
+adata = adata[adata.obs['pct_counts_mt'] < args.max_mt].copy()
 adata = adata[~adata.obs['predicted_doublet']].copy()
 logging.info(f"Filtering complete. {adata.n_obs} cells retained.")
 
@@ -80,7 +90,7 @@ logging.info(f"Filtering complete. {adata.n_obs} cells retained.")
 adata.layers["counts"] = adata.X.copy()
 
 # Normalize
-sc.pp.normalize_total(adata)
+sc.pp.normalize_total(adata, target_sum=1e4)
 sc.pp.log1p(adata)
 
 logging.info("Normalization completed")
@@ -90,12 +100,22 @@ sc.pp.highly_variable_genes(adata, n_top_genes=2000, batch_key=args.batch_key)
 sc.pl.highly_variable_genes(adata, save="_hvg.png")
 logging.info(f"Selected top 2000 variable genes and plot saved.")
 
-# Dimensionality Reduction
-sc.tl.pca(adata)
-sc.pp.neighbors(adata)
-logging.info(f"Dimensionality reduction completed and plot saved.")
+# PCA
+sc.tl.pca(adata, svd_solver='arpack', random_state=args.seed)
+    
+# Batch Correction and Neighborhood Graph
+if args.batch_key in adata.obs.columns and adata.obs[args.batch_key].nunique() > 1:
+    logging.info(f"Running Harmony integration on {args.batch_key}")
+    sc.external.pp.harmony_integrate(adata, args.batch_key, random_state=args.seed)
+        
+    sc.pp.neighbors(adata, use_rep='X_pca_harmony', random_state=args.seed)
+else:
+    logging.info(f"Single batch detected for {args.batch_key}. Skipping integration.")
+        
+    sc.pp.neighbors(adata, random_state=args.seed)
+logging.info("Dimensionality reduction completed and plot saved.")
 
-sc.tl.umap(adata)
+sc.tl.umap(adata, random_state=args.seed)
 sc.pl.umap(adata, color=args.batch_key, size=2, save="_sample_umap.png")
 logging.info(f"UMAP completed and plot saved.")
 
