@@ -48,12 +48,11 @@ if args.metadata:
     logging.info(f"Merging external metadata: {args.metadata}")
     metadata = pd.read_csv(args.metadata, index_col=0)
     adata.obs = adata.obs.join(metadata)
+    if args.batch_key not in adata.obs.columns:
+        raise KeyError(f"'{args.batch_key}' not found after merging metadata. Check column name in {args.metadata}.")
     if adata.obs[args.batch_key].isna().all():
-        raise ValueError(
-            f"Metadata merge failed. All values for '{args.batch_key}' are NaN. "
-            "Verify your matrix barcodes and metadata index match exactly."
-        )
-
+        raise ValueError(f"Metadata merge failed. All values for '{args.batch_key}' are NaN. Verify your matrix barcodes and metadata index match exactly.")
+        
 # Data Validation
 if adata.n_obs == 0 or adata.n_vars == 0:
     raise ValueError("Matrix is empty. Terminating pipeline.")
