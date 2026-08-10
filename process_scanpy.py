@@ -68,7 +68,7 @@ sc.pp.calculate_qc_metrics(adata, qc_vars=["mt"], inplace=True, log1p=True)
 
 # Drop cells missing from metadata file
 adata = adata[adata.obs[args.batch_key].notna()].copy()
-    logging.info(f"Filtered matrix to cells with valid metadata. New shape: {adata.n_obs} cells x {adata.n_vars} genes.")
+logging.info(f"Filtered matrix to cells with valid metadata. New shape: {adata.n_obs} cells x {adata.n_vars} genes.")
 
 # Doublet detection
 sc.pp.scrublet(adata, batch_key=args.batch_key, random_state=args.seed)

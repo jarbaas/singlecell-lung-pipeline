@@ -6,8 +6,6 @@ params.outdir          = null
 params.max_mt          = 15.0
 params.container_image = null
 
-
-
 process SCANPY_ANALYSIS {
     
     publishDir "${params.outdir}", mode: 'copy'
