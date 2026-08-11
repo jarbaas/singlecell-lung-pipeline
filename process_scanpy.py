@@ -129,7 +129,7 @@ logging.info("UMAP completed and plot saved.")
 
 # Automatic Clustering
 logging.info("Pre-computing Leiden over-clustering for majority voting...")
-sc.tl.leiden(adata, resolution=10.0, key_added='leiden_over_clustering')
+sc.tl.leiden(adata, resolution=5.0, flavor="igraph", n_iterations=2, directed=False, key_added='leiden_over_clustering') 
 
 logging.info("Performing automatic clustering via CellTypist...")
 predictions = celltypist.annotate(
