@@ -74,7 +74,7 @@ logging.info(f"Filtered matrix to cells with valid metadata. New shape: {adata.n
 
 # Save QC plots
 logging.info("Generating QC plots...")
-sc.pl.violin(adata, ["n_genes_by_counts", "total_counts", "pct_counts_mt"], multi_panel=True, save="_pre_qc.png")
+sc.pl.violin(adata, ["n_genes_by_counts", "total_counts", "pct_counts_mt"], log=True, multi_panel=True, jitter=False, save="_pre_qc.png", rasterized=True)
 logging.info("QC completed and plots saved.")
 
 # Basic Filtering
@@ -128,7 +128,7 @@ logging.info("Dimensionality reduction completed.")
 # Calculate and plot UMAP
 logging.info("Calculating UMAP...")
 sc.tl.umap(adata, random_state=args.seed)
-sc.pl.umap(adata, color=args.batch_key, size=2, save="_sample_umap.png")
+sc.pl.umap(adata, color=args.batch_key, size=2, legend_loc='none', save="_sample_umap.png")
 logging.info("UMAP completed and plot saved.")
 
 # Automatic Clustering
@@ -146,7 +146,7 @@ predictions = celltypist.annotate(
 adata = predictions.to_adata()
 
 logging.info("Saving UMAP visualizations...")
-sc.pl.umap(adata, color='majority_voting', save="_labeled_umap.png")
+sc.pl.umap(adata, color='majority_voting', legend_loc='on data', legend_fontsize=8, legend_fontoutline=2, save="_labeled_umap.png")
 
 # Extract markers for each annotated cell type and save to CSV
 logging.info("Clustering success. Computing marker genes via Welch's t-test...")
