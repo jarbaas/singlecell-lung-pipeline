@@ -58,9 +58,6 @@ if args.metadata:
 if adata.n_obs == 0 or adata.n_vars == 0:
     raise ValueError("Matrix is empty. Terminating pipeline.")
 
-if args.batch_key not in adata.obs.columns:
-    raise KeyError(f"'{args.batch_key}' missing from adata.obs. Required for batch processing.")
-
 logging.info(f"Validation passed. Matrix: {adata.n_obs} cells x {adata.n_vars} genes.")
 
 # Perform QC
@@ -138,7 +135,7 @@ sc.pl.umap(adata, color='majority_voting', save="_labeled_umap.png", rasterized=
 
 # Extract markers for each annotated cell type and save to CSV
 logging.info("Clustering success. Computing marker genes via Welch's t-test...")
-sc.tl.rank_genes_groups(adata, groupby='majority_voting', method='t-test_overestim_var', use_raw=False)
+sc.tl.rank_genes_groups(adata, groupby='majority_voting', method='wilcoxon', use_raw=False)
 sc.get.rank_genes_groups_df(adata, group=None).to_csv("marker_genes.csv", index=False)
 
 # Save the final object
