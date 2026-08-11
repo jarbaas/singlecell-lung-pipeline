@@ -111,7 +111,7 @@ sc.tl.pca(adata, svd_solver='arpack', random_state=args.seed)
 # Batch Correction and Neighborhood Graph
 if args.batch_key in adata.obs.columns and adata.obs[args.batch_key].nunique() > 1:
     logging.info(f"Running native Harmony integration on {args.batch_key}...")
-    sc.pp.harmony_integrate(adata, args.batch_key, random_state=args.seed)
+    sc.external.pp.harmony_integrate(adata, args.batch_key, random_state=args.seed)
         
     logging.info("Building neighborhood graph (Harmony-adjusted)...")
     sc.pp.neighbors(adata, use_rep='X_pca_harmony', random_state=args.seed)
