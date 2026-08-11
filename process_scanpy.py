@@ -5,6 +5,7 @@ import scanpy as sc
 import pandas as pd
 from pathlib import Path
 import celltypist
+import gc
 
 # Enable logging for tracking in the cloud
 logging.basicConfig(
@@ -32,7 +33,7 @@ sc.settings.set_figure_params(dpi=100, fontsize=10, dpi_save=400, facecolor='whi
 
 logging.info(f"Initialized pipeline with {args.threads} threads and seed {args.seed}")
 
-# Data Ingestion (supports matrix or .h5ad inputs)
+# Data Ingestion (matrix or .h5ad inputs)
 input_path = Path(args.input)
 if input_path.is_file() and input_path.suffix == '.h5ad':
     logging.info(f"Reading .h5ad file: {input_path}")
@@ -70,19 +71,24 @@ sc.pp.calculate_qc_metrics(adata, qc_vars=["mt"], inplace=True, log1p=True)
 adata = adata[adata.obs[args.batch_key].notna()].copy()
 logging.info(f"Filtered matrix to cells with valid metadata. New shape: {adata.n_obs} cells x {adata.n_vars} genes.")
 
-# Doublet detection
-sc.pp.scrublet(adata, batch_key=args.batch_key, random_state=args.seed)
-
-# Save QC plots
-sc.pl.violin(adata, ["n_genes_by_counts", "total_counts", "pct_counts_mt"], multi_panel=True, save="_pre_qc.png")
-
+# Save QC plots (Rasterized for significant speedup)
+logging.info("Generating QC plots...")
+sc.pl.violin(adata, ["n_genes_by_counts", "total_counts", "pct_counts_mt"], multi_panel=True, save="_pre_qc.png", rasterized=True)
 logging.info("QC completed and plots saved.")
 
-#Filtering
+# Basic Filtering
 sc.pp.filter_cells(adata, min_genes=100)
 sc.pp.filter_genes(adata, min_cells=3)
 adata = adata[adata.obs['pct_counts_mt'] < args.max_mt].copy()
+gc.collect()
+
+# Doublet detection 
+logging.info("Running doublet detection...")
+sc.pp.scrublet(adata, batch_key=args.batch_key, random_state=args.seed)
+
+# Filter doublets
 adata = adata[~adata.obs['predicted_doublet']].copy()
+gc.collect()
 logging.info(f"Filtering complete. {adata.n_obs} cells retained.")
 
 # Saving count data
@@ -91,49 +97,51 @@ adata.layers["counts"] = adata.X.copy()
 # Normalize
 sc.pp.normalize_total(adata, target_sum=1e4)
 sc.pp.log1p(adata)
-
 logging.info("Normalization completed")
 
 # Select features
 sc.pp.highly_variable_genes(adata, n_top_genes=2000, batch_key=args.batch_key)
-sc.pl.highly_variable_genes(adata, save="_hvg.png")
-logging.info(f"Selected top 2000 variable genes and plot saved.")
+sc.pl.highly_variable_genes(adata, save="_hvg.png", rasterized=True)
+logging.info("Selected top 2000 variable genes and plot saved.")
 
 # PCA
+logging.info("Running PCA...")
 sc.tl.pca(adata, svd_solver='arpack', random_state=args.seed)
     
 # Batch Correction and Neighborhood Graph
 if args.batch_key in adata.obs.columns and adata.obs[args.batch_key].nunique() > 1:
-    logging.info(f"Running Harmony integration on {args.batch_key}")
+    logging.info(f"Running native Harmony integration on {args.batch_key}...")
     sc.pp.harmony_integrate(adata, args.batch_key, random_state=args.seed)
         
+    logging.info("Building neighborhood graph (Harmony-adjusted)...")
     sc.pp.neighbors(adata, use_rep='X_pca_harmony', random_state=args.seed)
 else:
     logging.info(f"Single batch detected for {args.batch_key}. Skipping integration.")
-        
+    
+    logging.info("Building neighborhood graph (PCA)...")
     sc.pp.neighbors(adata, random_state=args.seed)
-logging.info("Dimensionality reduction completed and plot saved.")
 
+gc.collect()
+logging.info("Dimensionality reduction completed.")
+
+# Calculate and plot UMAP
+logging.info("Calculating UMAP...")
 sc.tl.umap(adata, random_state=args.seed)
-sc.pl.umap(adata, color=args.batch_key, size=2, save="_sample_umap.png")
-logging.info(f"UMAP completed and plot saved.")
+sc.pl.umap(adata, color=args.batch_key, size=2, save="_sample_umap.png", rasterized=True)
+logging.info("UMAP completed and plot saved.")
 
 # Automatic Clustering
-logging.info(f"Performing automatic clustering...")
+logging.info("Performing automatic clustering via CellTypist...")
 predictions = celltypist.annotate(adata, model=args.model, majority_voting=True)
 adata = predictions.to_adata()
-sc.pl.umap(adata, color='majority_voting', save="_labeled_umap.png")
+sc.pl.umap(adata, color='majority_voting', save="_labeled_umap.png", rasterized=True)
 
 # Extract markers for each annotated cell type and save to CSV
-logging.info(f"Clustering success. Writing markers for cell types to CSV...")
-sc.tl.rank_genes_groups(adata, groupby='majority_voting', method='wilcoxon')
+logging.info("Clustering success. Computing marker genes via Welch's t-test...")
+sc.tl.rank_genes_groups(adata, groupby='majority_voting', method='t-test_overestim_var', use_raw=False)
 sc.get.rank_genes_groups_df(adata, group=None).to_csv("marker_genes.csv", index=False)
 
+# Save the final object
+logging.info("Saving analyzed data to h5ad...")
 adata.write_h5ad("analyzed_object.h5ad")
-logging.info(f"Pipeline completed. Analyzed h5ad object saved.")
-
-
-
-
-
-
+logging.info("Pipeline completed. Analyzed h5ad object saved.")

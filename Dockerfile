@@ -3,7 +3,7 @@ RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 RUN pip install --no-cache-dir --only-binary=:all: \
     anndata==0.10.8 \
-    scanpy==1.11.1 \
+    scanpy==1.12.3 \
     pandas==2.2.3 \
     celltypist==1.6.3 \
     scikit-image==0.22.0
