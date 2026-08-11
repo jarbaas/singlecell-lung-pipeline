@@ -1,10 +1,13 @@
 import logging
 import argparse
+import random
+import numpy as np
 import anndata as ad
 import scanpy as sc
 import pandas as pd
 from pathlib import Path
 import celltypist
+from celltypist import models
 import gc
 
 # Enable logging for tracking in the cloud
@@ -28,8 +31,9 @@ args = parser.parse_args()
 # Global Scanpy settings
 sc.settings.verbosity = 0
 sc.settings.n_jobs = args.threads
-sc.settings.seed = args.seed
-sc.settings.set_figure_params(dpi=100, fontsize=10, dpi_save=400, facecolor='white', figsize=(6,6), format='png')
+np.random.seed(args.seed)
+random.seed(args.seed)
+sc.set_figure_params(dpi=100, fontsize=10, dpi_save=400, facecolor='white', figsize=6, format='png')
 
 logging.info(f"Initialized pipeline with {args.threads} threads and seed {args.seed}")
 
@@ -129,12 +133,13 @@ logging.info("UMAP completed and plot saved.")
 
 # Automatic Clustering
 logging.info("Pre-computing Leiden over-clustering for majority voting...")
-sc.tl.leiden(adata, resolution=5.0, flavor="igraph", n_iterations=2, directed=False, key_added='leiden_over_clustering') 
+sc.tl.leiden(adata, resolution=5.0, flavor="igraph", n_iterations=2, directed=False, key_added='leiden_over_clustering', random_state=args.seed) 
 
 logging.info("Performing automatic clustering via CellTypist...")
+model = models.Model.load(model=args.model)
 predictions = celltypist.annotate(
     adata, 
-    model=args.model, 
+    model=model, 
     majority_voting=True, 
     over_clustering='leiden_over_clustering'
 )
