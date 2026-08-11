@@ -129,13 +129,13 @@ logging.info("UMAP completed and plot saved.")
 
 # Automatic Clustering
 logging.info("Performing automatic clustering via CellTypist...")
-predictions = celltypist.annotate(adata, model=args.model, majority_voting=True)
+predictions = celltypist.annotate(adata, model=args.model, majority_voting=False)
 adata = predictions.to_adata()
-sc.pl.umap(adata, color='majority_voting', save="_labeled_umap.png")
+sc.pl.umap(adata, color='predicted_labels', save="_labeled_umap.png")
 
 # Extract markers for each annotated cell type and save to CSV
 logging.info("Clustering success. Computing marker genes via Welch's t-test...")
-sc.tl.rank_genes_groups(adata, groupby='majority_voting', method='wilcoxon', use_raw=False)
+sc.tl.rank_genes_groups(adata, groupby='predicted_labels', method='wilcoxon', use_raw=False)
 sc.get.rank_genes_groups_df(adata, group=None).to_csv("marker_genes.csv", index=False)
 
 # Save the final object
