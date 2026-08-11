@@ -101,7 +101,7 @@ logging.info("Normalization completed")
 
 # Select features
 sc.pp.highly_variable_genes(adata, n_top_genes=2000, batch_key=args.batch_key)
-sc.pl.highly_variable_genes(adata, save="_hvg.png", rasterized=True)
+sc.pl.highly_variable_genes(adata, save="_hvg.png")
 logging.info("Selected top 2000 variable genes and plot saved.")
 
 # PCA
