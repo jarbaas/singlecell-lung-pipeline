@@ -128,14 +128,24 @@ sc.pl.umap(adata, color=args.batch_key, size=2, save="_sample_umap.png")
 logging.info("UMAP completed and plot saved.")
 
 # Automatic Clustering
+logging.info("Pre-computing Leiden over-clustering for majority voting...")
+sc.tl.leiden(adata, resolution=10.0, key_added='leiden_over_clustering')
+
 logging.info("Performing automatic clustering via CellTypist...")
-predictions = celltypist.annotate(adata, model=args.model, majority_voting=False)
+predictions = celltypist.annotate(
+    adata, 
+    model=args.model, 
+    majority_voting=True, 
+    over_clustering='leiden_over_clustering'
+)
 adata = predictions.to_adata()
-sc.pl.umap(adata, color='predicted_labels', save="_labeled_umap.png")
+
+logging.info("Saving UMAP visualizations...")
+sc.pl.umap(adata, color='majority_voting', save="_labeled_umap.png")
 
 # Extract markers for each annotated cell type and save to CSV
 logging.info("Clustering success. Computing marker genes via Welch's t-test...")
-sc.tl.rank_genes_groups(adata, groupby='predicted_labels', method='wilcoxon', use_raw=False)
+sc.tl.rank_genes_groups(adata, groupby='majority_voting', method='wilcoxon', use_raw=False)
 sc.get.rank_genes_groups_df(adata, group=None).to_csv("marker_genes.csv", index=False)
 
 # Save the final object
